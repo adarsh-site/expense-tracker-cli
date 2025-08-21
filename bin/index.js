@@ -1,10 +1,17 @@
 #!/usr/bin/env node
 
+import { Command } from "commander";
 import fs from "fs";
 import path from "path";
 import chalk from "chalk";
+import Table from "cli-table3";
+import { fileURLToPath } from "url";
 
-const expenseFilePath = path.join(__dirname, "expense.json");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const expenseFilePath = path.join(__dirname, "expenses.json");
+
+const program = new Command();
 
 // Function to read expenses from the JSON file
 function readExpenses() {
@@ -35,8 +42,17 @@ function getNextId(expenses) {
 
 // Function to add a new expense
 function addExpense(description, amount) {
-  if (!description || isNaN(amount)) {
-    console.log(chalk.red("Please provide a valid description and amount."));
+  if (
+    !description ||
+    typeof amount !== "number" ||
+    isNaN(amount) ||
+    amount < 0
+  ) {
+    console.log(
+      chalk.red(
+        "Please provide a valid description and a valid number as amount."
+      )
+    );
     return;
   }
 
@@ -54,7 +70,7 @@ function addExpense(description, amount) {
 }
 
 // Function to update an expense
-function updateExpense(id, description, amount) {
+function updateExpense(id, description = null, amount = null) {
   const expenses = readExpenses();
   const expense = expenses.find((expense) => expense.id === parseInt(id));
 
@@ -63,8 +79,14 @@ function updateExpense(id, description, amount) {
     return;
   }
 
+  if (typeof amount !== "number" || isNaN(amount) || amount < 0) {
+    console.log(chalk.red("Please provide a valid number as amount."));
+    return;
+  }
+
   if (description) expense.description = description;
   if (amount) expense.amount = amount;
+  expense.updatedAt = new Date();
   writeExpenses(expenses);
   console.log(chalk.green(`Expense ID ${id} updated successfully!`));
 }
@@ -80,7 +102,7 @@ function deleteExpense(id) {
   }
 
   writeExpenses(newExpenses);
-  console.log(chalk.green(`Expense ID ${id} deleted successfully!`));
+  console.log(chalk.green("Expense deleted successfully!"));
 }
 
 // Function to list expenses
@@ -92,14 +114,22 @@ function listExpenses() {
     return;
   }
 
-  const formattedExpenses = expenses.map((exp) => ({
-    ID: exp.id,
-    Date: new Date(exp.createdAt).toISOString().split("T")[0],
-    Description: exp.description,
-    Amount: `$${exp.amount}`,
-  }));
+  const table = new Table({
+    head: ["ID", "Date", "Description", "Amount"],
+    colWidths: [5, 12, 20, 10],
+    wordWrap: true,
+  });
 
-  console.table(formattedExpenses);
+  expenses.forEach((exp) => {
+    table.push([
+      exp.id,
+      new Date(exp.createdAt).toISOString().split("T")[0],
+      exp.description,
+      `$${exp.amount}`,
+    ]);
+  });
+
+  console.log(table.toString());
 }
 
 // Function to show summary (filtered by months)
@@ -110,18 +140,107 @@ function showSummary(month = null) {
   if (month !== null) {
     filteredExpenses = expenses.filter((exp) => {
       const date = new Date(exp.createdAt);
-      return date.getMonth() + 1 === parseInt(month);
+      return date.getMonth() + 1 === month;
     });
   }
 
-  const total = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const total = filteredExpenses.reduce(
+    (sum, exp) => sum + parseFloat(exp.amount),
+    0
+  );
 
   if (month !== null) {
     const monthName = new Date(2000, month - 1).toLocaleString("default", {
       month: "long",
     });
-    console.log(chalk.blue(`Total expenses for ${monthName}: $${total}`));
+    console.log(chalk.cyan(`Total expenses for ${monthName}: $${total}`));
   } else {
-    console.log(chalk.blue(`Total expenses: $${total}`));
+    console.log(chalk.cyan(`Total expenses: $${total}`));
   }
 }
+
+// Add Expense
+program
+  .command("add")
+  .description("Add a new expense")
+  .requiredOption("-d, --description <description>", "Expense description")
+  .requiredOption("-a, --amount <amount>", "Expense amount")
+  .action((options) =>
+    addExpense(options.description, parseFloat(options.amount))
+  );
+
+// Update Expense
+program
+  .command("update")
+  .description("Update an expense by ID")
+  .requiredOption("-i, --id <id>", "Expense ID to update")
+  .requiredOption("-d, --description <description>", "Expense description")
+  .requiredOption("-a, --amount <amount>", "Expense amount")
+  .action((options) =>
+    updateExpense(
+      parseInt(options.id),
+      options.description,
+      parseFloat(options.amount)
+    )
+  );
+
+// Delete Expense
+program
+  .command("delete")
+  .description("Delete an expense by ID")
+  .requiredOption("-i, --id <id>", "Expense ID to delete")
+  .action((options) => deleteExpense(parseInt(options.id)));
+
+// List Expenses
+program
+  .command("list")
+  .description("List all expenses")
+  .action(() => listExpenses());
+
+// Summary
+program
+  .command("summary")
+  .description("Show total expenses")
+  .option("-m, --month <month>", "Filter by month number (1-12)")
+  .action((options) => {
+    if (
+      options.month &&
+      (options.month < 1 ||
+        options.month > 12 ||
+        typeof(parseInt(options.month)) !== "number" ||
+        isNaN(parseInt(options.month)))
+    ) {
+      console.log(chalk.red("Invalid month. Use a number from 1 to 12."));
+      return;
+    }
+    showSummary(options.month ? parseInt(options.month) : null);
+  });
+
+program
+  .name("expense-tracker")
+  .description("A simple CLI tool to track expenses")
+  .version("1.0.0")
+  .addHelpText("before");
+
+program.addHelpText(
+  "after",
+  `
+Examples:
+
+  $ expense-tracker add -d "Coffee" -a 4.5
+  $ expense-tracker list
+  $ expense-tracker delete -i 2
+  $ expense-tracker summary
+  $ expense-tracker summary -m 8
+
+Use "--help" with any command to see detailed usage.
+`
+);
+
+program.on("command:*", () => {
+  console.error(chalk.red(`\nInvalid command: ${program.args.join(" ")}`));
+  console.log("See help below:\n");
+  program.help();
+});
+
+program.parse(process.argv);
