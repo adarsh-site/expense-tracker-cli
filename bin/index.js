@@ -47,3 +47,19 @@ function addExpense(description, amount) {
     writeExpenses(expenses);
     console.log(chalk.green(`Expense added successfully (ID: ${id})`));
 }
+
+// Function to update an expense
+function updateExpense(id, description, amount) {
+    const expenses = readExpenses();
+    const expense = expenses.find((expense) => expense.id === parseInt(id));
+
+    if(!expense) {
+        console.log(chalk.red(`Expense with ID ${id} not found.`));
+        return;
+    }
+
+    if(description) expense.description = description;
+    if(amount) expense.amount = amount;
+    writeExpenses(expenses);
+    console.log(chalk.green(`Expense ID ${id} updated successfully!`));
+}
