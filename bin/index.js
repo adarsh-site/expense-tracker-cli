@@ -63,3 +63,17 @@ function updateExpense(id, description, amount) {
     writeExpenses(expenses);
     console.log(chalk.green(`Expense ID ${id} updated successfully!`));
 }
+
+// Function to delete an expense
+function deleteExpense(id) {
+    const expenses = readExpenses();
+    const newExpenses = expenses.filter((expense) => expense.id !== parseInt(id));
+
+    if(newExpenses.length === expenses.length) {
+        console.log(chalk.red(`Expense with ID ${id} not found.`));
+        return;
+    }
+
+    writeExpenses(newExpenses);
+    console.log(chalk.green(`Expense ID ${id} deleted successfully!`));
+}
