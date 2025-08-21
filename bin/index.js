@@ -2,6 +2,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import chalk from 'chalk';
 
 const expenseFilePath = path.join(__dirname, "expense.json");
 
@@ -30,4 +31,19 @@ function getNextId(expenses) {
         nextId++;
     }
     return nextId;
+}
+
+// Function to add a new expense
+function addExpense(description, amount) {
+    const expenses = readExpenses();
+    const newExpense = {
+        id: getNextId(expenses),
+        description: description,
+        amount: amount,
+        createdAt: new Date(),
+        updatedAt: null,
+    };
+    expenses.push(newExpense);
+    writeExpenses(expenses);
+    console.log(chalk.green(`Expense added successfully (ID: ${id})`));
 }
