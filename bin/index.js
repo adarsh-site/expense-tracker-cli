@@ -35,6 +35,11 @@ function getNextId(expenses) {
 
 // Function to add a new expense
 function addExpense(description, amount) {
+  if (!description || isNaN(amount)) {
+    console.log(chalk.red("Please provide a valid description and amount."));
+    return;
+  }
+
   const expenses = readExpenses();
   const newExpense = {
     id: getNextId(expenses),
@@ -80,9 +85,9 @@ function deleteExpense(id) {
 
 // Function to list expenses
 function listExpenses() {
-  const tasks = readExpenses();
+  const expenses = readExpenses();
 
-  if (tasks.length === 0) {
+  if (expenses.length === 0) {
     console.log(chalk.yellow(`No expense found.`));
     return;
   }
@@ -103,7 +108,7 @@ function showSummary(month = null) {
   let filteredExpenses = expenses;
 
   if (month !== null) {
-    filteredExpenses = expense.filter((exp) => {
+    filteredExpenses = expenses.filter((exp) => {
       const date = new Date(exp.createdAt);
       return date.getMonth() + 1 === parseInt(month);
     });
