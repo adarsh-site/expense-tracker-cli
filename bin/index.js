@@ -91,8 +91,32 @@ function listExpenses() {
     ID: exp.id,
     Date: new Date(exp.createdAt).toISOString().split("T")[0],
     Description: exp.description,
-    Amount: exp.amount,
+    Amount: `$${exp.amount}`,
   }));
 
   console.table(formattedExpenses);
+}
+
+// Function to show summary (filtered by months)
+function showSummary(month = null) {
+  const expenses = readExpenses();
+  let filteredExpenses = expenses;
+
+  if (month !== null) {
+    filteredExpenses = expense.filter((exp) => {
+      const date = new Date(exp.createdAt);
+      return date.getMonth() + 1 === parseInt(month);
+    });
+  }
+
+  const total = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+  if (month !== null) {
+    const monthName = new Date(2000, month - 1).toLocaleString("default", {
+      month: "long",
+    });
+    console.log(chalk.blue(`Total expenses for ${monthName}: $${total}`));
+  } else {
+    console.log(chalk.blue(`Total expenses: $${total}`));
+  }
 }
